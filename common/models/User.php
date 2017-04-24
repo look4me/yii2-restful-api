@@ -1,21 +1,25 @@
 <?php
+
 namespace common\models;
 
 use Yii;
-use yii\base\NotSupportedException;
+use yii\web\UnauthorizedHttpException;
 use yii\behaviors\TimestampBehavior;
 use yii\db\ActiveRecord;
 use yii\web\IdentityInterface;
 
 /**
- * User model
+ * This is the model class for table "user".
  *
  * @property integer $id
  * @property string $username
+ * @property string $avatar
+ * @property string $auth_key
  * @property string $password_hash
  * @property string $password_reset_token
  * @property string $email
- * @property string $auth_key
+ * @property string $access_token
+ * @property integer $role
  * @property integer $status
  * @property integer $created_at
  * @property integer $updated_at
@@ -68,6 +72,10 @@ class User extends ActiveRecord implements IdentityInterface
     public function rules()
     {
         return [
+            [['username', 'auth_key', 'password_hash', 'email', 'created_at', 'updated_at'], 'required'],
+            [['role', 'status', 'created_at', 'updated_at'], 'integer'],
+            [['username', 'avatar', 'password_hash', 'password_reset_token', 'email', 'access_token'], 'string', 'max' => 255],
+            [['auth_key'], 'string', 'max' => 32],
             ['status', 'default', 'value' => self::STATUS_ACTIVE],
             ['status', 'in', 'range' => [self::STATUS_ACTIVE, self::STATUS_DELETED]],
         ];
@@ -86,13 +94,36 @@ class User extends ActiveRecord implements IdentityInterface
      */
     public static function findIdentityByAccessToken($token, $type = null)
     {
-//        throw new NotSupportedException('"findIdentityByAccessToken" is not implemented.');
-        foreach (self::$users as $user) {
-            if ($user['accessToken'] === $token) {
-                return new static($user);
-            }
+        // 如果token无效的话，
+        if(!static::isAccessTokenValid($token)) {
+            throw new UnauthorizedHttpException("access-token is invalid.");
         }
-        return null;
+
+        return static::findOne(['access_token' => $token, 'status' => self::STATUS_ACTIVE]);
+        // throw new NotSupportedException('"findIdentityByAccessToken" is not implemented.');
+    }
+
+    /**
+     * 生成 access_token
+     */
+    public function generateAccessToken()
+    {
+        $this->access_token = Yii::$app->security->generateRandomString() . '_' . time();
+        return $this->save();
+    }
+
+    /**
+     * 校验access_token是否有效
+     */
+    public static function isAccessTokenValid($token)
+    {
+        if (empty($token)) {
+            return false;
+        }
+
+        $timestamp = (int) substr($token, strrpos($token, '_') + 1);
+        $expire = Yii::$app->params['user.accessTokenExpire'];
+        return $timestamp + $expire >= time();
     }
 
     /**

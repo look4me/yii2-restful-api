@@ -30,8 +30,6 @@ return [
             'identityClass' => 'common\models\User',
             'enableAutoLogin' => true,
             'enableSession' => false,
-//            'identityCookie' => ['name' => '_identity-backend', 'httpOnly' => true],
-            'loginUrl' => null
         ],
         'session' => [
             // this is the name of the session cookie used for login on the backend
@@ -56,11 +54,17 @@ return [
             'showScriptName' => false, // 在URL路径中是否显示脚本入口文件
 
             'rules' => [
-//                '<controller:\w+>/<id:\d+>' => '<controller>/view',
-//                '<controller:\w+>/<action:\w+>/<id:\d+>' => '<controller>/<action>',
-//                '<controller:\w+>/<action:\w+>' => '<controller>/<action>',
-                ['class' => 'yii\rest\UrlRule', 'controller' => ['v1/user', 'v1/city'] ],
-            ],
+                [
+                    'class' => 'yii\rest\UrlRule',
+                    'controller' => ['v1/user', 'v1/city'],
+                    'pluralize' => false,
+                    'extraPatterns' => [
+                        'POST login' => 'login',
+                        'GET signup-test' => 'signup-test',
+                        'GET user-profile' => 'user-profile',
+                    ]
+                ],
+            ]
 
         ],
 
